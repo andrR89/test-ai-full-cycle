@@ -1,22 +1,29 @@
 const express = require('express');
 const router = express.Router();
 
-const SERVER_START_TIME = Date.now();
+const START_TIME = Date.now();
 
 /**
  * GET /healthz
- * Returns server health status, uptime, and version.
+ * Returns service health status, uptime, and version.
  */
 router.get('/healthz', (req, res) => {
-  const uptimeSeconds = Math.floor((Date.now() - SERVER_START_TIME) / 1000);
-  const version = process.env.APP_VERSION || 'unknown';
+  try {
+    const uptimeSeconds = Math.floor((Date.now() - START_TIME) / 1000);
+    const version = process.env.APP_VERSION || 'unknown';
 
-  return res.status(200).json({
-    status: 'ok',
-    uptime: uptimeSeconds,
-    version: version,
-  });
+    return res.status(200).json({
+      status: 'ok',
+      uptime: uptimeSeconds,
+      version,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      status: 'error',
+      message: 'Health check failed',
+    });
+  }
 });
 
 module.exports = router;
-module.exports.SERVER_START_TIME = SERVER_START_TIME;
+module.exports.START_TIME = START_TIME;
