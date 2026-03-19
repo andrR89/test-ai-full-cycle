@@ -1,13 +1,12 @@
-'use strict';
-
 const express = require('express');
+const healthRouter = require('./routes/health');
+
 const app = express();
 
 app.use(express.json());
 
-// Routes
-const healthRouter = require('./routes/health');
-app.use('/healthz', healthRouter);
+// Mount health-check route
+app.use('/', healthRouter);
 
 // 404 handler
 app.use((req, res) => {
