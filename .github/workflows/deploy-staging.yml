@@ -14,14 +14,16 @@ on:
     branches:
       - main
       - master
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     # Only run when an AI-generated PR is merged (not just closed)
     if: |
-      github.event.pull_request.merged == true &&
-      contains(github.event.pull_request.title, '[AI]')
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.title, '[AI]'))
 
     steps:
       - uses: actions/checkout@v4
