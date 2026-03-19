@@ -1,19 +1,52 @@
-import { useCallback } from 'react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { login as apiLogin, register as apiRegister } from '../api/authApi';
+import type { LoginCredentials, RegisterCredentials } from '../types/auth';
 
-const TOKEN_KEY = 'auth_token';
+export function useLogin() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
-export function useAuth() {
-  const getToken = useCallback(() => localStorage.getItem(TOKEN_KEY), []);
+  async function handleLogin(credentials: LoginCredentials) {
+    setLoading(true);
+    setError(null);
+    try {
+      const { token } = await apiLogin(credentials);
+      localStorage.setItem('token', token);
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const setToken = useCallback((token: string) => {
-    localStorage.setItem(TOKEN_KEY, token);
-  }, []);
+  return { handleLogin, loading, error };
+}
 
-  const clearToken = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-  }, []);
+export function useRegister() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
-  const isAuthenticated = useCallback(() => !!localStorage.getItem(TOKEN_KEY), []);
+  async function handleRegister(credentials: Omit<RegisterCredentials, 'confirmPassword'>) {
+    setLoading(true);
+    setError(null);
+    try {
+      const { token } = await apiRegister(credentials);
+      localStorage.setItem('token', token);
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  return { getToken, setToken, clearToken, isAuthenticated };
+  return { handleRegister, loading, error };
+}
+
+export function isAuthenticated(): boolean {
+  return Boolean(localStorage.getItem('token'));
 }
