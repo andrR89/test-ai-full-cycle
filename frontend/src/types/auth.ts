@@ -22,5 +22,5 @@ export interface User {
 
 export interface ApiError {
   message: string
-  status?: number
+  statusCode?: number
 }

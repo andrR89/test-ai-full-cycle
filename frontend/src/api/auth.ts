@@ -1,32 +1,22 @@
-import { LoginRequest, RegisterRequest, AuthResponse } from '../types/auth';
+import axios, { AxiosError } from 'axios'
+import type { LoginRequest, RegisterRequest, AuthResponse } from '../types/auth'
 
-const BASE = '/api/auth';
+const api = axios.create({ baseURL: '/api' })
 
-async function handleResponse<T>(res: Response): Promise<T> {
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = (data as { message?: string }).message || `HTTP ${res.status}`;
-    const err = new Error(msg) as Error & { status: number };
-    err.status = res.status;
-    throw err;
+export async function loginUser(data: LoginRequest): Promise<AuthResponse> {
+  const res = await api.post<AuthResponse>('/auth/login', data)
+  return res.data
+}
+
+export async function registerUser(data: Omit<RegisterRequest, 'confirmPassword'>): Promise<AuthResponse> {
+  const res = await api.post<AuthResponse>('/auth/register', data)
+  return res.data
+}
+
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof AxiosError) {
+    return error.response?.data?.message ?? error.message
   }
-  return data as T;
-}
-
-export async function loginApi(payload: LoginRequest): Promise<AuthResponse> {
-  const res = await fetch(`${BASE}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  return handleResponse<AuthResponse>(res);
-}
-
-export async function registerApi(payload: Omit<RegisterRequest, 'confirmPassword'>): Promise<AuthResponse> {
-  const res = await fetch(`${BASE}/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  return handleResponse<AuthResponse>(res);
+  if (error instanceof Error) return error.message
+  return 'An unexpected error occurred'
 }

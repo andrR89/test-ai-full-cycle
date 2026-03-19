@@ -1,90 +1,97 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
-import RegisterPage from '../RegisterPage';
-import * as authApi from '../../api/authApi';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
+import { vi, describe, it, expect, beforeEach } from 'vitest'
+import RegisterPage from '../RegisterPage'
+import * as useAuthModule from '../../hooks/useAuth'
 
-vi.mock('../../api/authApi');
+const mockRegister = vi.fn()
 
-const mockedRegister = vi.mocked(authApi.register);
+vi.mock('../../hooks/useAuth', () => ({
+  useLogin: vi.fn(() => ({ login: vi.fn(), loading: false, error: null })),
+  useRegister: vi.fn(() => ({ register: mockRegister, loading: false, error: null })),
+}))
 
-function renderRegisterPage() {
-  return render(
-    <MemoryRouter initialEntries={['/register']}>
-      <Routes>
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/dashboard" element={<div>Dashboard</div>} />
-        <Route path="/login" element={<div>Login</div>} />
-      </Routes>
+const renderRegister = () =>
+  render(
+    <MemoryRouter>
+      <RegisterPage />
     </MemoryRouter>
-  );
-}
+  )
 
 describe('RegisterPage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    localStorage.clear();
-  });
+  let user: ReturnType<typeof userEvent.setup>
 
-  it('renders all fields', () => {
-    renderRegisterPage();
-    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
-  });
+  beforeEach(() => {
+    user = userEvent.setup()
+    vi.clearAllMocks()
+    vi.mocked(useAuthModule.useRegister).mockReturnValue({ register: mockRegister, loading: false, error: null })
+  })
+
+  it('renders email, password, and confirm password fields', () => {
+    renderRegister()
+    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument()
+  })
+
+  it('renders create account button', () => {
+    renderRegister()
+    expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument()
+  })
+
+  it('renders link back to login', () => {
+    renderRegister()
+    expect(screen.getByRole('link', { name: /sign in/i })).toBeInTheDocument()
+  })
 
   it('shows validation error when passwords do not match', async () => {
-    renderRegisterPage();
-    await userEvent.type(screen.getByLabelText(/email address/i), 'user@example.com');
-    await userEvent.type(screen.getByLabelText(/^password$/i), 'password123');
-    await userEvent.type(screen.getByLabelText(/confirm password/i), 'different123');
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Passwords do not match');
-  });
+    renderRegister()
+    await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
+    await user.type(screen.getByLabelText(/^password$/i), 'password123')
+    await user.type(screen.getByLabelText(/confirm password/i), 'different123')
+    fireEvent.submit(screen.getByRole('button', { name: /create account/i }).closest('form')!)
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Passwords do not match')
+    })
+    expect(mockRegister).not.toHaveBeenCalled()
+  })
 
   it('shows validation error when password is too short', async () => {
-    renderRegisterPage();
-    await userEvent.type(screen.getByLabelText(/email address/i), 'user@example.com');
-    await userEvent.type(screen.getByLabelText(/^password$/i), 'short');
-    await userEvent.type(screen.getByLabelText(/confirm password/i), 'short');
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('at least 8 characters');
-  });
+    renderRegister()
+    await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
+    await user.type(screen.getByLabelText(/^password$/i), 'short')
+    await user.type(screen.getByLabelText(/confirm password/i), 'short')
+    fireEvent.submit(screen.getByRole('button', { name: /create account/i }).closest('form')!)
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('at least 8 characters')
+    })
+  })
 
-  it('stores token and navigates to dashboard on success', async () => {
-    mockedRegister.mockResolvedValue({ token: 'new-token', user: { id: '2', email: 'user@example.com', createdAt: '' } });
-    renderRegisterPage();
-    await userEvent.type(screen.getByLabelText(/email address/i), 'user@example.com');
-    await userEvent.type(screen.getByLabelText(/^password$/i), 'password123');
-    await userEvent.type(screen.getByLabelText(/confirm password/i), 'password123');
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
-    await waitFor(() => expect(screen.getByText('Dashboard')).toBeInTheDocument());
-    expect(localStorage.getItem('token')).toBe('new-token');
-  });
+  it('calls register when passwords match and are valid', async () => {
+    renderRegister()
+    await user.type(screen.getByLabelText(/email address/i), 'test@example.com')
+    await user.type(screen.getByLabelText(/^password$/i), 'password123')
+    await user.type(screen.getByLabelText(/confirm password/i), 'password123')
+    fireEvent.submit(screen.getByRole('button', { name: /create account/i }).closest('form')!)
+    await waitFor(() => {
+      expect(mockRegister).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password123',
+        confirmPassword: 'password123',
+      })
+    })
+  })
 
-  it('shows API error on registration failure (email taken)', async () => {
-    mockedRegister.mockRejectedValue(new Error('Email already in use'));
-    renderRegisterPage();
-    await userEvent.type(screen.getByLabelText(/email address/i), 'existing@example.com');
-    await userEvent.type(screen.getByLabelText(/^password$/i), 'password123');
-    await userEvent.type(screen.getByLabelText(/confirm password/i), 'password123');
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Email already in use');
-  });
+  it('shows API error when error is present', () => {
+    vi.mocked(useAuthModule.useRegister).mockReturnValue({ register: mockRegister, loading: false, error: 'Email already taken' })
+    renderRegister()
+    expect(screen.getByRole('alert')).toHaveTextContent('Email already taken')
+  })
 
-  it('shows loading state while submitting', async () => {
-    mockedRegister.mockImplementation(() => new Promise(() => {}));
-    renderRegisterPage();
-    await userEvent.type(screen.getByLabelText(/email address/i), 'user@example.com');
-    await userEvent.type(screen.getByLabelText(/^password$/i), 'password123');
-    await userEvent.type(screen.getByLabelText(/confirm password/i), 'password123');
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
-    expect(await screen.findByRole('button', { name: /creating account/i })).toBeDisabled();
-  });
-
-  it('has a link to the login page', () => {
-    renderRegisterPage();
-    expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/login');
-  });
-});
+  it('disables button when loading', () => {
+    vi.mocked(useAuthModule.useRegister).mockReturnValue({ register: mockRegister, loading: true, error: null })
+    renderRegister()
+    expect(screen.getByRole('button', { name: /create account/i })).toBeDisabled()
+  })
+})

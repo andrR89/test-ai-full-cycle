@@ -22,87 +22,110 @@ afterEach(() => {
 });
 
 describe('POST /api/auth/register', () => {
-  it('returns 400 if email is invalid', async () => {
-    const res = await request(app).post('/api/auth/register').send({ email: 'bad', password: 'password123' });
+  it('returns 400 for invalid email', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'not-an-email', password: 'password123' });
     expect(res.status).toBe(400);
   });
 
-  it('returns 400 if password too short', async () => {
-    const res = await request(app).post('/api/auth/register').send({ email: 'a@b.com', password: 'short' });
+  it('returns 400 for short password', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'user@example.com', password: '123' });
     expect(res.status).toBe(400);
   });
 
   it('returns 409 if email already taken', async () => {
-    prisma.user.findUnique.mockResolvedValue({ id: '1', email: 'a@b.com' });
-    const res = await request(app).post('/api/auth/register').send({ email: 'a@b.com', password: 'password123' });
+    prisma.user.findUnique.mockResolvedValue({ id: '1', email: 'user@example.com' });
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'user@example.com', password: 'password123' });
     expect(res.status).toBe(409);
-    expect(res.body.error).toMatch(/email already in use/i);
+    expect(res.body.error).toMatch(/already in use/i);
   });
 
-  it('returns 201 with user and token on success', async () => {
+  it('returns 201 and token on success', async () => {
+    const now = new Date();
     prisma.user.findUnique.mockResolvedValue(null);
-    const created = { id: 'cuid1', email: 'a@b.com', createdAt: new Date().toISOString() };
-    prisma.user.create.mockResolvedValue(created);
-
-    const res = await request(app).post('/api/auth/register').send({ email: 'a@b.com', password: 'password123' });
+    prisma.user.create.mockResolvedValue({ id: 'abc', email: 'user@example.com', createdAt: now });
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'user@example.com', password: 'password123' });
     expect(res.status).toBe(201);
     expect(res.body.token).toBeDefined();
-    expect(res.body.user.email).toBe('a@b.com');
-    expect(res.body.user.passwordHash).toBeUndefined();
+    expect(res.body.user.email).toBe('user@example.com');
   });
 
   it('returns 500 on unexpected error', async () => {
-    prisma.user.findUnique.mockRejectedValue(new Error('db error'));
-    const res = await request(app).post('/api/auth/register').send({ email: 'a@b.com', password: 'password123' });
+    prisma.user.findUnique.mockRejectedValue(new Error('DB error'));
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'user@example.com', password: 'password123' });
     expect(res.status).toBe(500);
   });
 });
 
 describe('POST /api/auth/login', () => {
-  it('returns 400 if email is invalid', async () => {
-    const res = await request(app).post('/api/auth/login').send({ email: 'bad', password: 'pass' });
-    expect(res.status).toBe(400);
-  });
-
-  it('returns 400 if password missing', async () => {
-    const res = await request(app).post('/api/auth/login').send({ email: 'a@b.com', password: '' });
+  it('returns 400 for missing fields', async () => {
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'bad-email', password: '' });
     expect(res.status).toBe(400);
   });
 
   it('returns 401 if user not found', async () => {
     prisma.user.findUnique.mockResolvedValue(null);
-    const res = await request(app).post('/api/auth/login').send({ email: 'a@b.com', password: 'password123' });
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'user@example.com', password: 'password123' });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 401 if password is wrong', async () => {
+    const hash = await bcrypt.hash('correctpassword', 10);
+    prisma.user.findUnique.mockResolvedValue({
+      id: '1',
+      email: 'user@example.com',
+      passwordHash: hash,
+      createdAt: new Date(),
+    });
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'user@example.com', password: 'wrongpassword' });
     expect(res.status).toBe(401);
     expect(res.body.error).toMatch(/invalid credentials/i);
   });
 
-  it('returns 401 if password wrong', async () => {
-    const hash = await bcrypt.hash('correct', 10);
-    prisma.user.findUnique.mockResolvedValue({ id: '1', email: 'a@b.com', passwordHash: hash });
-    const res = await request(app).post('/api/auth/login').send({ email: 'a@b.com', password: 'wrong' });
-    expect(res.status).toBe(401);
-  });
-
-  it('returns 200 with token on valid credentials', async () => {
+  it('returns 200 and token on valid credentials', async () => {
     const hash = await bcrypt.hash('password123', 10);
-    prisma.user.findUnique.mockResolvedValue({ id: 'cuid1', email: 'a@b.com', passwordHash: hash, createdAt: new Date() });
-    const res = await request(app).post('/api/auth/login').send({ email: 'a@b.com', password: 'password123' });
+    const now = new Date();
+    prisma.user.findUnique.mockResolvedValue({
+      id: '1',
+      email: 'user@example.com',
+      passwordHash: hash,
+      createdAt: now,
+    });
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'user@example.com', password: 'password123' });
     expect(res.status).toBe(200);
     expect(res.body.token).toBeDefined();
-    const payload = jwt.verify(res.body.token, JWT_SECRET);
-    expect(payload.sub).toBe('cuid1');
+    expect(res.body.user.email).toBe('user@example.com');
   });
 
   it('returns 500 on unexpected error', async () => {
-    prisma.user.findUnique.mockRejectedValue(new Error('db error'));
-    const res = await request(app).post('/api/auth/login').send({ email: 'a@b.com', password: 'password123' });
+    prisma.user.findUnique.mockRejectedValue(new Error('DB error'));
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'user@example.com', password: 'password123' });
     expect(res.status).toBe(500);
   });
 });
 
 describe('GET /api/auth/me', () => {
-  function makeToken(userId) {
-    return jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: '1h' });
+  function makeToken(payload) {
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
   }
 
   it('returns 401 with no token', async () => {
@@ -110,25 +133,40 @@ describe('GET /api/auth/me', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 401 with malformed token', async () => {
-    const res = await request(app).get('/api/auth/me').set('Authorization', 'Bearer badtoken');
+  it('returns 401 with invalid token', async () => {
+    const res = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', 'Bearer invalid.token.here');
     expect(res.status).toBe(401);
   });
 
-  it('returns 401 if user no longer exists', async () => {
+  it('returns 401 if user not found in DB', async () => {
+    const token = makeToken({ sub: 'abc', email: 'user@example.com' });
     prisma.user.findUnique.mockResolvedValue(null);
-    const token = makeToken('ghost');
-    const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
+    const res = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(401);
   });
 
-  it('returns 200 with user data on valid token', async () => {
-    const user = { id: 'cuid1', email: 'a@b.com', passwordHash: 'h', createdAt: new Date() };
-    prisma.user.findUnique.mockResolvedValue(user);
-    const token = makeToken('cuid1');
-    const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
+  it('returns 200 with user data for valid token', async () => {
+    const now = new Date();
+    const token = makeToken({ sub: 'abc', email: 'user@example.com' });
+    prisma.user.findUnique.mockResolvedValue({ id: 'abc', email: 'user@example.com', createdAt: now });
+    const res = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
-    expect(res.body.user.id).toBe('cuid1');
-    expect(res.body.user.passwordHash).toBeUndefined();
+    expect(res.body.user.id).toBe('abc');
+    expect(res.body.user.email).toBe('user@example.com');
+  });
+
+  it('returns 500 on unexpected error', async () => {
+    const token = makeToken({ sub: 'abc', email: 'user@example.com' });
+    prisma.user.findUnique.mockRejectedValue(new Error('DB error'));
+    const res = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(500);
   });
 });

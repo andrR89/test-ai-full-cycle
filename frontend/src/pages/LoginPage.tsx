@@ -1,14 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import {
-  Box,
-  Button,
-  CircularProgress,
-  Container,
-  Link,
-  Paper,
-  TextField,
-  Typography,
-  Alert,
+  Box, Button, CircularProgress, Container, Link,
+  TextField, Typography, Alert, Paper
 } from '@mui/material'
 import { Link as RouterLink } from 'react-router-dom'
 import { useLogin } from '../hooks/useAuth'
@@ -17,45 +10,24 @@ export default function LoginPage() {
   const { login, loading, error } = useLogin()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' })
-
-  const validate = (): boolean => {
-    const errors = { email: '', password: '' }
-    if (!email) errors.email = 'Email is required'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Enter a valid email'
-    if (!password) errors.password = 'Password is required'
-    setFieldErrors(errors)
-    return !errors.email && !errors.password
-  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!validate()) return
     await login({ email, password })
   }
 
   return (
     <Container maxWidth="xs">
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
+      <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
-          <Typography variant="h5" component="h1" gutterBottom align="center" fontWeight={700}>
+          <Typography component="h1" variant="h5" align="center" gutterBottom>
             Sign In
           </Typography>
-
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }} role="alert">
+            <Alert severity="error" role="alert" sx={{ mb: 2 }}>
               {error}
             </Alert>
           )}
-
           <Box
             component="form"
             onSubmit={handleSubmit}
@@ -63,50 +35,50 @@ export default function LoginPage() {
             aria-label="Login form"
           >
             <TextField
-              label="Email"
+              margin="normal"
+              required
+              fullWidth
+              id="email"
+              label="Email Address"
+              name="email"
               type="email"
+              autoComplete="email"
+              autoFocus
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              error={!!fieldErrors.email}
-              helperText={fieldErrors.email}
-              fullWidth
-              margin="normal"
-              autoComplete="email"
-              inputProps={{ 'aria-label': 'Email address' }}
+              inputProps={{ 'aria-label': 'Email Address' }}
               disabled={loading}
             />
             <TextField
+              margin="normal"
+              required
+              fullWidth
+              id="password"
               label="Password"
+              name="password"
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              error={!!fieldErrors.password}
-              helperText={fieldErrors.password}
-              fullWidth
-              margin="normal"
-              autoComplete="current-password"
               inputProps={{ 'aria-label': 'Password' }}
               disabled={loading}
             />
             <Button
               type="submit"
-              variant="contained"
               fullWidth
-              size="large"
+              variant="contained"
+              sx={{ mt: 3, mb: 2 }}
               disabled={loading}
-              sx={{ mt: 2, mb: 1 }}
-              aria-label={loading ? 'Signing in…' : 'Sign in'}
+              aria-label="Sign in"
             >
-              {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
+              {loading ? <CircularProgress size={24} color="inherit" aria-label="Loading" /> : 'Sign In'}
             </Button>
+            <Box sx={{ textAlign: 'center' }}>
+              <Link component={RouterLink} to="/register" variant="body2">
+                Don&apos;t have an account? Register
+              </Link>
+            </Box>
           </Box>
-
-          <Typography variant="body2" align="center" sx={{ mt: 1 }}>
-            Don&apos;t have an account?{' '}
-            <Link component={RouterLink} to="/register" underline="hover">
-              Register
-            </Link>
-          </Typography>
         </Paper>
       </Box>
     </Container>

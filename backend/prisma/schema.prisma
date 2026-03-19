@@ -12,6 +12,4 @@ model User {
   email        String   @unique
   passwordHash String
   createdAt    DateTime @default(now())
-
-  @@index([email])
 }
