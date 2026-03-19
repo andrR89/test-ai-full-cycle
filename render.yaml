@@ -1,7 +1,10 @@
 # =============================================================================
-# TEMPLATE: Copy this file to the ROOT of your target repository.
-# Render reads this file automatically when you connect the repo.
-# Defines backend (Node.js), frontend (React/Vite) and PostgreSQL.
+# Blueprint Render — backend (Node.js) + PostgreSQL
+#
+# NOTA: Static sites (frontend React/Vite) não são suportados no Blueprint.
+# Criar o frontend manualmente no Render Dashboard:
+#   New > Static Site > conectar repo > rootDir: frontend
+#   Build: npm install && npm run build  |  Publish: dist
 # =============================================================================
 
 services:
@@ -20,18 +23,6 @@ services:
           property: connectionString
       - key: PORT
         value: 3000
-
-  - type: static
-    name: app-frontend
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    envVars:
-      - key: VITE_API_URL
-        fromService:
-          name: app-backend
-          type: web
-          property: host
 
 databases:
   - name: app-db
