@@ -1,5 +1,3 @@
-'use strict';
-
 const express = require('express');
 const router = express.Router();
 
@@ -7,9 +5,9 @@ const START_TIME = Date.now();
 
 /**
  * GET /healthz
- * Returns service health information including status, uptime, and version.
+ * Returns service health status, uptime, and version.
  */
-router.get('/', (req, res) => {
+router.get('/healthz', (req, res) => {
   try {
     const uptimeSeconds = Math.floor((Date.now() - START_TIME) / 1000);
     const version = process.env.APP_VERSION || 'unknown';
