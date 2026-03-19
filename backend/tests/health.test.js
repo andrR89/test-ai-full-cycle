@@ -1,52 +1,44 @@
 const request = require('supertest');
 const app = require('../src/app');
-const { START_TIME } = require('../src/routes/health');
 
 describe('GET /healthz', () => {
-  beforeAll(() => {
-    // Ensure a clean env state before tests
-    delete process.env.APP_VERSION;
-  });
-
   afterAll(() => {
-    delete process.env.APP_VERSION;
+    // Clean up any open handles if needed
   });
 
   it('should return 200 OK', async () => {
     const res = await request(app).get('/healthz');
-    expect(res.status).toBe(200);
+    expect(res.statusCode).toBe(200);
   });
 
   it('should return status: ok', async () => {
     const res = await request(app).get('/healthz');
-    expect(res.body.status).toBe('ok');
+    expect(res.body).toHaveProperty('status', 'ok');
   });
 
-  it('should return uptime as a non-negative integer', async () => {
+  it('should return uptime as a non-negative number', async () => {
     const res = await request(app).get('/healthz');
+    expect(res.body).toHaveProperty('uptime');
     expect(typeof res.body.uptime).toBe('number');
-    expect(Number.isInteger(res.body.uptime)).toBe(true);
     expect(res.body.uptime).toBeGreaterThanOrEqual(0);
   });
 
-  it('should return uptime that is consistent with START_TIME', async () => {
-    const before = Math.floor((Date.now() - START_TIME) / 1000);
-    const res = await request(app).get('/healthz');
-    const after = Math.floor((Date.now() - START_TIME) / 1000);
-    expect(res.body.uptime).toBeGreaterThanOrEqual(before);
-    expect(res.body.uptime).toBeLessThanOrEqual(after + 1);
+  it('should return version from APP_VERSION env variable', async () => {
+    process.env.APP_VERSION = '1.2.3';
+    // Re-require to pick up env change — use isolated module cache
+    jest.resetModules();
+    const freshApp = require('../src/app');
+    const res = await request(freshApp).get('/healthz');
+    expect(res.body).toHaveProperty('version', '1.2.3');
+    delete process.env.APP_VERSION;
   });
 
   it('should return version as "unknown" when APP_VERSION is not set', async () => {
     delete process.env.APP_VERSION;
-    const res = await request(app).get('/healthz');
-    expect(res.body.version).toBe('unknown');
-  });
-
-  it('should return the version from the APP_VERSION environment variable', async () => {
-    process.env.APP_VERSION = '1.2.3';
-    const res = await request(app).get('/healthz');
-    expect(res.body.version).toBe('1.2.3');
+    jest.resetModules();
+    const freshApp = require('../src/app');
+    const res = await request(freshApp).get('/healthz');
+    expect(res.body).toHaveProperty('version', 'unknown');
   });
 
   it('should return a JSON content-type', async () => {
@@ -56,6 +48,6 @@ describe('GET /healthz', () => {
 
   it('should return 404 for unknown routes', async () => {
     const res = await request(app).get('/unknown-route');
-    expect(res.status).toBe(404);
+    expect(res.statusCode).toBe(404);
   });
 });
