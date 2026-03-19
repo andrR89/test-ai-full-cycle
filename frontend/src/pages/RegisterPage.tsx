@@ -1,43 +1,42 @@
-import { useState, FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import {
   Box,
   Button,
   CircularProgress,
   Container,
+  Link,
+  Paper,
   TextField,
   Typography,
   Alert,
-  Paper,
-  Link as MuiLink,
 } from '@mui/material'
-import { Link } from 'react-router-dom'
+import { Link as RouterLink } from 'react-router-dom'
 import { useRegister } from '../hooks/useAuth'
 
 export default function RegisterPage() {
+  const { register, loading, error } = useRegister()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [validationError, setValidationError] = useState<string | null>(null)
-  const { submit, loading, error } = useRegister()
+  const [fieldErrors, setFieldErrors] = useState({ email: '', password: '', confirmPassword: '' })
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault()
-    setValidationError(null)
-
-    if (password !== confirmPassword) {
-      setValidationError('Passwords do not match')
-      return
-    }
-
-    if (password.length < 6) {
-      setValidationError('Password must be at least 6 characters')
-      return
-    }
-
-    submit({ email, password })
+  const validate = (): boolean => {
+    const errors = { email: '', password: '', confirmPassword: '' }
+    if (!email) errors.email = 'Email is required'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Enter a valid email'
+    if (!password) errors.password = 'Password is required'
+    else if (password.length < 8) errors.password = 'Password must be at least 8 characters'
+    if (!confirmPassword) errors.confirmPassword = 'Please confirm your password'
+    else if (password !== confirmPassword) errors.confirmPassword = 'Passwords do not match'
+    setFieldErrors(errors)
+    return !errors.email && !errors.password && !errors.confirmPassword
   }
 
-  const displayError = validationError ?? error
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!validate()) return
+    await register({ email, password })
+  }
 
   return (
     <Container maxWidth="xs">
@@ -47,22 +46,17 @@ export default function RegisterPage() {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
+          alignItems: 'center',
         }}
       >
-        <Paper elevation={3} sx={{ p: 4 }}>
-          <Typography
-            component="h1"
-            variant="h5"
-            align="center"
-            gutterBottom
-            fontWeight={700}
-          >
+        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
+          <Typography variant="h5" component="h1" gutterBottom align="center" fontWeight={700}>
             Create Account
           </Typography>
 
-          {displayError && (
-            <Alert severity="error" role="alert" sx={{ mb: 2 }}>
-              {displayError}
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} role="alert">
+              {error}
             </Alert>
           )}
 
@@ -70,62 +64,65 @@ export default function RegisterPage() {
             component="form"
             onSubmit={handleSubmit}
             noValidate
-            aria-label="Register form"
+            aria-label="Registration form"
           >
             <TextField
-              id="email"
-              label="Email Address"
+              label="Email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              margin="normal"
+              error={!!fieldErrors.email}
+              helperText={fieldErrors.email}
               fullWidth
-              required
+              margin="normal"
               autoComplete="email"
-              autoFocus
-              inputProps={{ 'aria-label': 'Email Address' }}
+              inputProps={{ 'aria-label': 'Email address' }}
+              disabled={loading}
             />
             <TextField
-              id="password"
               label="Password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              margin="normal"
+              error={!!fieldErrors.password}
+              helperText={fieldErrors.password}
               fullWidth
-              required
+              margin="normal"
               autoComplete="new-password"
               inputProps={{ 'aria-label': 'Password' }}
+              disabled={loading}
             />
             <TextField
-              id="confirmPassword"
               label="Confirm Password"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              margin="normal"
+              error={!!fieldErrors.confirmPassword}
+              helperText={fieldErrors.confirmPassword}
               fullWidth
-              required
+              margin="normal"
               autoComplete="new-password"
-              inputProps={{ 'aria-label': 'Confirm Password' }}
+              inputProps={{ 'aria-label': 'Confirm password' }}
+              disabled={loading}
             />
             <Button
               type="submit"
-              fullWidth
               variant="contained"
+              fullWidth
+              size="large"
               disabled={loading}
-              sx={{ mt: 2, mb: 2 }}
-              aria-label="Create account"
+              sx={{ mt: 2, mb: 1 }}
+              aria-label={loading ? 'Creating account…' : 'Create account'}
             >
-              {loading ? <CircularProgress size={24} aria-label="Loading" /> : 'Create Account'}
+              {loading ? <CircularProgress size={24} color="inherit" /> : 'Register'}
             </Button>
           </Box>
 
-          <Typography variant="body2" align="center">
+          <Typography variant="body2" align="center" sx={{ mt: 1 }}>
             Already have an account?{' '}
-            <MuiLink component={Link} to="/login" underline="hover">
+            <Link component={RouterLink} to="/login" underline="hover">
               Sign In
-            </MuiLink>
+            </Link>
           </Typography>
         </Paper>
       </Box>

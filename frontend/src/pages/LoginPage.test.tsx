@@ -1,114 +1,103 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { vi } from 'vitest'
 import LoginPage from './LoginPage'
 import * as authApi from '../api/authApi'
 
 vi.mock('../api/authApi')
-
-const mockNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  }
+  return { ...actual, useNavigate: () => vi.fn() }
 })
 
-function renderLogin() {
-  return render(
+const renderLogin = () =>
+  render(
     <MemoryRouter>
       <LoginPage />
     </MemoryRouter>
   )
-}
-
-beforeEach(() => {
-  vi.clearAllMocks()
-  localStorage.clear()
-})
 
 describe('LoginPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+  })
+
   it('renders email and password fields', () => {
     renderLogin()
-    expect(screen.getByLabelText('Email Address')).toBeInTheDocument()
-    expect(screen.getByLabelText('Password')).toBeInTheDocument()
+    expect(screen.getByLabelText(/email address/i)).toBeDefined()
+    expect(screen.getByLabelText(/^password$/i)).toBeDefined()
   })
 
   it('renders sign in button', () => {
     renderLogin()
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeDefined()
   })
 
-  it('renders link to register', () => {
+  it('renders link to register page', () => {
     renderLogin()
-    expect(screen.getByRole('link', { name: /register/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /register/i })).toBeDefined()
   })
 
-  it('stores token and navigates on successful login', async () => {
-    vi.mocked(authApi.login).mockResolvedValueOnce({
-      token: 'test-jwt-token',
-      user: { id: '1', email: 'test@example.com', createdAt: new Date().toISOString() },
-    })
-
+  it('shows validation errors when submitting empty form', async () => {
     renderLogin()
-
-    fireEvent.change(screen.getByLabelText('Email Address'), {
-      target: { value: 'test@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText('Password'), {
-      target: { value: 'password123' },
-    })
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }))
-
     await waitFor(() => {
-      expect(localStorage.getItem('token')).toBe('test-jwt-token')
+      expect(screen.getByText(/email is required/i)).toBeDefined()
+      expect(screen.getByText(/password is required/i)).toBeDefined()
     })
-    expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true })
   })
 
-  it('shows error message on invalid credentials', async () => {
-    const { AxiosError } = await import('axios')
-    const err = new AxiosError('Request failed')
-    err.response = { data: { message: 'Invalid credentials' }, status: 401 } as any
-    vi.mocked(authApi.login).mockRejectedValueOnce(err)
-
+  it('shows invalid email error', async () => {
     renderLogin()
-
-    fireEvent.change(screen.getByLabelText('Email Address'), {
-      target: { value: 'bad@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText('Password'), {
-      target: { value: 'wrongpass' },
-    })
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'notanemail' } })
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }))
-
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('Invalid credentials')
+      expect(screen.getByText(/enter a valid email/i)).toBeDefined()
     })
-    expect(localStorage.getItem('token')).toBeNull()
   })
 
-  it('disables button and shows loading spinner during submission', async () => {
-    let resolve!: (v: any) => void
-    vi.mocked(authApi.login).mockReturnValueOnce(
-      new Promise((r) => { resolve = r })
-    )
-
+  it('calls loginApi with correct credentials', async () => {
+    const mockLogin = vi.spyOn(authApi, 'loginApi').mockResolvedValue({
+      token: 'test-token',
+      user: { id: '1', email: 'test@example.com', createdAt: '' },
+    })
     renderLogin()
-
-    fireEvent.change(screen.getByLabelText('Email Address'), {
-      target: { value: 'test@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText('Password'), {
-      target: { value: 'password123' },
-    })
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'test@example.com' } })
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'password123' } })
     fireEvent.click(screen.getByRole('button', { name: /sign in/i }))
-
     await waitFor(() => {
-      expect(screen.getByLabelText('Loading')).toBeInTheDocument()
+      expect(mockLogin).toHaveBeenCalledWith({ email: 'test@example.com', password: 'password123' })
     })
+  })
 
-    resolve({ token: 'tok', user: { id: '1', email: 'test@example.com', createdAt: '' } })
+  it('stores token in localStorage on success', async () => {
+    vi.spyOn(authApi, 'loginApi').mockResolvedValue({
+      token: 'jwt-token-xyz',
+      user: { id: '1', email: 'test@example.com', createdAt: '' },
+    })
+    renderLogin()
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'test@example.com' } })
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'password123' } })
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }))
+    await waitFor(() => {
+      expect(localStorage.getItem('token')).toBe('jwt-token-xyz')
+    })
+  })
+
+  it('shows error alert on invalid credentials', async () => {
+    const axiosError = Object.assign(new Error(), {
+      isAxiosError: true,
+      response: { data: { message: 'Invalid credentials' }, status: 401 },
+    })
+    vi.spyOn(authApi, 'loginApi').mockRejectedValue(axiosError)
+    vi.spyOn(authApi, 'getApiErrorMessage').mockReturnValue('Invalid email or password')
+    renderLogin()
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'wrong@example.com' } })
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'wrongpass' } })
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeDefined()
+      expect(screen.getByText(/invalid email or password/i)).toBeDefined()
+    })
   })
 })

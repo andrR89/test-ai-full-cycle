@@ -8,30 +8,28 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-export async function login(data: LoginRequest): Promise<AuthResponse> {
-  const response = await api.post<AuthResponse>('/auth/login', data)
-  return response.data
+export async function loginApi(data: LoginRequest): Promise<AuthResponse> {
+  const res = await api.post<AuthResponse>('/auth/login', data)
+  return res.data
 }
 
-export async function register(data: Omit<RegisterRequest, 'confirmPassword'>): Promise<AuthResponse> {
-  const response = await api.post<AuthResponse>('/auth/register', data)
-  return response.data
+export async function registerApi(data: Omit<RegisterRequest, 'confirmPassword'>): Promise<AuthResponse> {
+  const res = await api.post<AuthResponse>('/auth/register', data)
+  return res.data
 }
 
-export async function getMe(): Promise<User> {
-  const response = await api.get<User>('/auth/me')
-  return response.data
+export async function getMeApi(): Promise<User> {
+  const res = await api.get<User>('/auth/me')
+  return res.data
 }
 
-export function getApiErrorMessage(error: unknown): string {
+export function getApiErrorMessage(error: unknown, fallback = 'An unexpected error occurred'): string {
   if (error instanceof AxiosError) {
-    return error.response?.data?.message ?? error.message
+    return error.response?.data?.message ?? fallback
   }
-  return 'An unexpected error occurred'
+  return fallback
 }

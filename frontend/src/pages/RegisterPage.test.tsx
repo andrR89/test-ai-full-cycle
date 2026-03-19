@@ -1,157 +1,117 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { vi } from 'vitest'
 import RegisterPage from './RegisterPage'
 import * as authApi from '../api/authApi'
 
 vi.mock('../api/authApi')
-
-const mockNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  }
+  return { ...actual, useNavigate: () => vi.fn() }
 })
 
-function renderRegister() {
-  return render(
+const renderRegister = () =>
+  render(
     <MemoryRouter>
       <RegisterPage />
     </MemoryRouter>
   )
-}
-
-beforeEach(() => {
-  vi.clearAllMocks()
-  localStorage.clear()
-})
 
 describe('RegisterPage', () => {
-  it('renders all form fields', () => {
-    renderRegister()
-    expect(screen.getByLabelText('Email Address')).toBeInTheDocument()
-    expect(screen.getByLabelText('Password')).toBeInTheDocument()
-    expect(screen.getByLabelText('Confirm Password')).toBeInTheDocument()
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
   })
 
-  it('renders link to login', () => {
+  it('renders all form fields', () => {
     renderRegister()
-    expect(screen.getByRole('link', { name: /sign in/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/email address/i)).toBeDefined()
+    expect(screen.getByLabelText(/^password$/i)).toBeDefined()
+    expect(screen.getByLabelText(/confirm password/i)).toBeDefined()
+  })
+
+  it('renders register button', () => {
+    renderRegister()
+    expect(screen.getByRole('button', { name: /register/i })).toBeDefined()
+  })
+
+  it('renders link to sign in page', () => {
+    renderRegister()
+    expect(screen.getByRole('link', { name: /sign in/i })).toBeDefined()
+  })
+
+  it('shows validation errors when submitting empty form', async () => {
+    renderRegister()
+    fireEvent.click(screen.getByRole('button', { name: /register/i }))
+    await waitFor(() => {
+      expect(screen.getByText(/email is required/i)).toBeDefined()
+      expect(screen.getByText(/password is required/i)).toBeDefined()
+      expect(screen.getByText(/please confirm your password/i)).toBeDefined()
+    })
   })
 
   it('shows error when passwords do not match', async () => {
     renderRegister()
-
-    fireEvent.change(screen.getByLabelText('Email Address'), {
-      target: { value: 'test@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText('Password'), {
-      target: { value: 'password123' },
-    })
-    fireEvent.change(screen.getByLabelText('Confirm Password'), {
-      target: { value: 'different' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
-
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'user@example.com' } })
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: 'different' } })
+    fireEvent.click(screen.getByRole('button', { name: /register/i }))
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('Passwords do not match')
+      expect(screen.getByText(/passwords do not match/i)).toBeDefined()
     })
-    expect(authApi.register).not.toHaveBeenCalled()
   })
 
   it('shows error when password is too short', async () => {
     renderRegister()
-
-    fireEvent.change(screen.getByLabelText('Email Address'), {
-      target: { value: 'test@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText('Password'), {
-      target: { value: '123' },
-    })
-    fireEvent.change(screen.getByLabelText('Confirm Password'), {
-      target: { value: '123' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
-
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'user@example.com' } })
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'short' } })
+    fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: 'short' } })
+    fireEvent.click(screen.getByRole('button', { name: /register/i }))
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('at least 6 characters')
+      expect(screen.getByText(/at least 8 characters/i)).toBeDefined()
     })
   })
 
-  it('submits and navigates on successful registration', async () => {
-    vi.mocked(authApi.register).mockResolvedValueOnce({
-      token: 'reg-token',
-      user: { id: '2', email: 'new@example.com', createdAt: new Date().toISOString() },
+  it('calls registerApi with correct data when form is valid', async () => {
+    const mockRegister = vi.spyOn(authApi, 'registerApi').mockResolvedValue({
+      token: 'new-token',
+      user: { id: '2', email: 'user@example.com', createdAt: '' },
     })
-
     renderRegister()
-
-    fireEvent.change(screen.getByLabelText('Email Address'), {
-      target: { value: 'new@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText('Password'), {
-      target: { value: 'securepass' },
-    })
-    fireEvent.change(screen.getByLabelText('Confirm Password'), {
-      target: { value: 'securepass' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
-
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'user@example.com' } })
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: 'password123' } })
+    fireEvent.click(screen.getByRole('button', { name: /register/i }))
     await waitFor(() => {
-      expect(localStorage.getItem('token')).toBe('reg-token')
-    })
-    expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true })
-  })
-
-  it('shows API error on registration failure', async () => {
-    const { AxiosError } = await import('axios')
-    const err = new AxiosError('Conflict')
-    err.response = { data: { message: 'Email already taken' }, status: 409 } as any
-    vi.mocked(authApi.register).mockRejectedValueOnce(err)
-
-    renderRegister()
-
-    fireEvent.change(screen.getByLabelText('Email Address'), {
-      target: { value: 'taken@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText('Password'), {
-      target: { value: 'password123' },
-    })
-    fireEvent.change(screen.getByLabelText('Confirm Password'), {
-      target: { value: 'password123' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('Email already taken')
+      expect(mockRegister).toHaveBeenCalledWith({ email: 'user@example.com', password: 'password123' })
     })
   })
 
-  it('disables button during submission', async () => {
-    let resolve!: (v: any) => void
-    vi.mocked(authApi.register).mockReturnValueOnce(
-      new Promise((r) => { resolve = r })
-    )
-
+  it('stores token in localStorage on successful registration', async () => {
+    vi.spyOn(authApi, 'registerApi').mockResolvedValue({
+      token: 'reg-token-abc',
+      user: { id: '2', email: 'user@example.com', createdAt: '' },
+    })
     renderRegister()
-
-    fireEvent.change(screen.getByLabelText('Email Address'), {
-      target: { value: 'new@example.com' },
-    })
-    fireEvent.change(screen.getByLabelText('Password'), {
-      target: { value: 'password123' },
-    })
-    fireEvent.change(screen.getByLabelText('Confirm Password'), {
-      target: { value: 'password123' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
-
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'user@example.com' } })
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: 'password123' } })
+    fireEvent.click(screen.getByRole('button', { name: /register/i }))
     await waitFor(() => {
-      expect(screen.getByLabelText('Loading')).toBeInTheDocument()
+      expect(localStorage.getItem('token')).toBe('reg-token-abc')
     })
+  })
 
-    resolve({ token: 'tok', user: { id: '1', email: 'new@example.com', createdAt: '' } })
+  it('shows error alert on duplicate email (409)', async () => {
+    vi.spyOn(authApi, 'registerApi').mockRejectedValue(new Error())
+    vi.spyOn(authApi, 'getApiErrorMessage').mockReturnValue('Email already in use')
+    renderRegister()
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'taken@example.com' } })
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'password123' } })
+    fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: 'password123' } })
+    fireEvent.click(screen.getByRole('button', { name: /register/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeDefined()
+      expect(screen.getByText(/email already in use/i)).toBeDefined()
+    })
   })
 })

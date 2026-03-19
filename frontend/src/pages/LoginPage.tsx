@@ -1,26 +1,37 @@
-import { useState, FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import {
   Box,
   Button,
   CircularProgress,
   Container,
+  Link,
+  Paper,
   TextField,
   Typography,
   Alert,
-  Paper,
-  Link as MuiLink,
 } from '@mui/material'
-import { Link } from 'react-router-dom'
+import { Link as RouterLink } from 'react-router-dom'
 import { useLogin } from '../hooks/useAuth'
 
 export default function LoginPage() {
+  const { login, loading, error } = useLogin()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const { submit, loading, error } = useLogin()
+  const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' })
 
-  const handleSubmit = (e: FormEvent) => {
+  const validate = (): boolean => {
+    const errors = { email: '', password: '' }
+    if (!email) errors.email = 'Email is required'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Enter a valid email'
+    if (!password) errors.password = 'Password is required'
+    setFieldErrors(errors)
+    return !errors.email && !errors.password
+  }
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    submit({ email, password })
+    if (!validate()) return
+    await login({ email, password })
   }
 
   return (
@@ -31,21 +42,16 @@ export default function LoginPage() {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
+          alignItems: 'center',
         }}
       >
-        <Paper elevation={3} sx={{ p: 4 }}>
-          <Typography
-            component="h1"
-            variant="h5"
-            align="center"
-            gutterBottom
-            fontWeight={700}
-          >
+        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
+          <Typography variant="h5" component="h1" gutterBottom align="center" fontWeight={700}>
             Sign In
           </Typography>
 
           {error && (
-            <Alert severity="error" role="alert" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{ mb: 2 }} role="alert">
               {error}
             </Alert>
           )}
@@ -57,47 +63,49 @@ export default function LoginPage() {
             aria-label="Login form"
           >
             <TextField
-              id="email"
-              label="Email Address"
+              label="Email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              margin="normal"
+              error={!!fieldErrors.email}
+              helperText={fieldErrors.email}
               fullWidth
-              required
+              margin="normal"
               autoComplete="email"
-              autoFocus
-              inputProps={{ 'aria-label': 'Email Address' }}
+              inputProps={{ 'aria-label': 'Email address' }}
+              disabled={loading}
             />
             <TextField
-              id="password"
               label="Password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              margin="normal"
+              error={!!fieldErrors.password}
+              helperText={fieldErrors.password}
               fullWidth
-              required
+              margin="normal"
               autoComplete="current-password"
               inputProps={{ 'aria-label': 'Password' }}
+              disabled={loading}
             />
             <Button
               type="submit"
-              fullWidth
               variant="contained"
+              fullWidth
+              size="large"
               disabled={loading}
-              sx={{ mt: 2, mb: 2 }}
-              aria-label="Sign in"
+              sx={{ mt: 2, mb: 1 }}
+              aria-label={loading ? 'Signing in…' : 'Sign in'}
             >
-              {loading ? <CircularProgress size={24} aria-label="Loading" /> : 'Sign In'}
+              {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
             </Button>
           </Box>
 
-          <Typography variant="body2" align="center">
+          <Typography variant="body2" align="center" sx={{ mt: 1 }}>
             Don&apos;t have an account?{' '}
-            <MuiLink component={Link} to="/register" underline="hover">
+            <Link component={RouterLink} to="/register" underline="hover">
               Register
-            </MuiLink>
+            </Link>
           </Typography>
         </Paper>
       </Box>
