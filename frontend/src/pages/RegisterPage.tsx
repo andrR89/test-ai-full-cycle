@@ -1,134 +1,134 @@
-import { useState, type FormEvent } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { useState, FormEvent } from 'react'
 import {
-  TextField,
-  Button,
-  Alert,
   Box,
-  Link,
-  InputAdornment,
-  IconButton,
-} from '@mui/material';
-import Visibility from '@mui/icons-material/Visibility';
-import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import AuthLayout from '../components/AuthLayout';
-import { useRegister } from '../hooks/useAuth';
+  Button,
+  CircularProgress,
+  Container,
+  TextField,
+  Typography,
+  Alert,
+  Paper,
+  Link as MuiLink,
+} from '@mui/material'
+import { Link } from 'react-router-dom'
+import { useRegister } from '../hooks/useAuth'
 
 export default function RegisterPage() {
-  const { handleRegister, loading, error } = useRegister();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const { submit, loading, error } = useRegister()
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    setValidationError(null);
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    setValidationError(null)
 
-    if (password.length < 8) {
-      setValidationError('Password must be at least 8 characters.');
-      return;
-    }
     if (password !== confirmPassword) {
-      setValidationError('Passwords do not match.');
-      return;
+      setValidationError('Passwords do not match')
+      return
     }
 
-    await handleRegister({ email, password });
+    if (password.length < 6) {
+      setValidationError('Password must be at least 6 characters')
+      return
+    }
+
+    submit({ email, password })
   }
 
-  const displayError = validationError ?? error;
+  const displayError = validationError ?? error
 
   return (
-    <AuthLayout title="Create Account">
+    <Container maxWidth="xs">
       <Box
-        component="form"
-        onSubmit={onSubmit}
-        noValidate
-        aria-label="Register form"
-        sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        }}
       >
-        {displayError && (
-          <Alert severity="error" role="alert">
-            {displayError}
-          </Alert>
-        )}
+        <Paper elevation={3} sx={{ p: 4 }}>
+          <Typography
+            component="h1"
+            variant="h5"
+            align="center"
+            gutterBottom
+            fontWeight={700}
+          >
+            Create Account
+          </Typography>
 
-        <TextField
-          id="reg-email"
-          label="Email Address"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          fullWidth
-          autoComplete="email"
-          autoFocus
-          inputProps={{ 'aria-required': true }}
-        />
+          {displayError && (
+            <Alert severity="error" role="alert" sx={{ mb: 2 }}>
+              {displayError}
+            </Alert>
+          )}
 
-        <TextField
-          id="reg-password"
-          label="Password"
-          type={showPassword ? 'text' : 'password'}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          fullWidth
-          autoComplete="new-password"
-          helperText="Minimum 8 characters"
-          inputProps={{ 'aria-required': true, minLength: 8 }}
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  onClick={() => setShowPassword((s) => !s)}
-                  edge="end"
-                >
-                  {showPassword ? <VisibilityOff /> : <Visibility />}
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-        />
+          <Box
+            component="form"
+            onSubmit={handleSubmit}
+            noValidate
+            aria-label="Register form"
+          >
+            <TextField
+              id="email"
+              label="Email Address"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              margin="normal"
+              fullWidth
+              required
+              autoComplete="email"
+              autoFocus
+              inputProps={{ 'aria-label': 'Email Address' }}
+            />
+            <TextField
+              id="password"
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              margin="normal"
+              fullWidth
+              required
+              autoComplete="new-password"
+              inputProps={{ 'aria-label': 'Password' }}
+            />
+            <TextField
+              id="confirmPassword"
+              label="Confirm Password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              margin="normal"
+              fullWidth
+              required
+              autoComplete="new-password"
+              inputProps={{ 'aria-label': 'Confirm Password' }}
+            />
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              disabled={loading}
+              sx={{ mt: 2, mb: 2 }}
+              aria-label="Create account"
+            >
+              {loading ? <CircularProgress size={24} aria-label="Loading" /> : 'Create Account'}
+            </Button>
+          </Box>
 
-        <TextField
-          id="reg-confirm-password"
-          label="Confirm Password"
-          type={showPassword ? 'text' : 'password'}
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-          fullWidth
-          autoComplete="new-password"
-          inputProps={{ 'aria-required': true }}
-          error={confirmPassword.length > 0 && password !== confirmPassword}
-          helperText={
-            confirmPassword.length > 0 && password !== confirmPassword
-              ? 'Passwords do not match'
-              : ''
-          }
-        />
-
-        <Button
-          type="submit"
-          variant="contained"
-          fullWidth
-          disabled={loading}
-          aria-busy={loading}
-          sx={{ mt: 1 }}
-        >
-          {loading ? 'Creating account…' : 'Create Account'}
-        </Button>
-
-        <Box sx={{ textAlign: 'center', mt: 1 }}>
-          <Link component={RouterLink} to="/login" variant="body2">
-            Already have an account? Sign In
-          </Link>
-        </Box>
+          <Typography variant="body2" align="center">
+            Already have an account?{' '}
+            <MuiLink component={Link} to="/login" underline="hover">
+              Sign In
+            </MuiLink>
+          </Typography>
+        </Paper>
       </Box>
-    </AuthLayout>
-  );
+    </Container>
+  )
 }

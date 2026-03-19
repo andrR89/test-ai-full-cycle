@@ -1,100 +1,106 @@
-import { useState, type FormEvent } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { useState, FormEvent } from 'react'
 import {
-  TextField,
-  Button,
-  Alert,
   Box,
-  Link,
-  InputAdornment,
-  IconButton,
-} from '@mui/material';
-import Visibility from '@mui/icons-material/Visibility';
-import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import AuthLayout from '../components/AuthLayout';
-import { useLogin } from '../hooks/useAuth';
+  Button,
+  CircularProgress,
+  Container,
+  TextField,
+  Typography,
+  Alert,
+  Paper,
+  Link as MuiLink,
+} from '@mui/material'
+import { Link } from 'react-router-dom'
+import { useLogin } from '../hooks/useAuth'
 
 export default function LoginPage() {
-  const { handleLogin, loading, error } = useLogin();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const { submit, loading, error } = useLogin()
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    await handleLogin({ email, password });
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    submit({ email, password })
   }
 
   return (
-    <AuthLayout title="Sign In">
+    <Container maxWidth="xs">
       <Box
-        component="form"
-        onSubmit={onSubmit}
-        noValidate
-        aria-label="Login form"
-        sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        }}
       >
-        {error && (
-          <Alert severity="error" role="alert">
-            {error}
-          </Alert>
-        )}
+        <Paper elevation={3} sx={{ p: 4 }}>
+          <Typography
+            component="h1"
+            variant="h5"
+            align="center"
+            gutterBottom
+            fontWeight={700}
+          >
+            Sign In
+          </Typography>
 
-        <TextField
-          id="email"
-          label="Email Address"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          fullWidth
-          autoComplete="email"
-          autoFocus
-          inputProps={{ 'aria-required': true }}
-        />
+          {error && (
+            <Alert severity="error" role="alert" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
 
-        <TextField
-          id="password"
-          label="Password"
-          type={showPassword ? 'text' : 'password'}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          fullWidth
-          autoComplete="current-password"
-          inputProps={{ 'aria-required': true }}
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  onClick={() => setShowPassword((s) => !s)}
-                  edge="end"
-                >
-                  {showPassword ? <VisibilityOff /> : <Visibility />}
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-        />
+          <Box
+            component="form"
+            onSubmit={handleSubmit}
+            noValidate
+            aria-label="Login form"
+          >
+            <TextField
+              id="email"
+              label="Email Address"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              margin="normal"
+              fullWidth
+              required
+              autoComplete="email"
+              autoFocus
+              inputProps={{ 'aria-label': 'Email Address' }}
+            />
+            <TextField
+              id="password"
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              margin="normal"
+              fullWidth
+              required
+              autoComplete="current-password"
+              inputProps={{ 'aria-label': 'Password' }}
+            />
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              disabled={loading}
+              sx={{ mt: 2, mb: 2 }}
+              aria-label="Sign in"
+            >
+              {loading ? <CircularProgress size={24} aria-label="Loading" /> : 'Sign In'}
+            </Button>
+          </Box>
 
-        <Button
-          type="submit"
-          variant="contained"
-          fullWidth
-          disabled={loading}
-          aria-busy={loading}
-          sx={{ mt: 1 }}
-        >
-          {loading ? 'Signing in…' : 'Sign In'}
-        </Button>
-
-        <Box sx={{ textAlign: 'center', mt: 1 }}>
-          <Link component={RouterLink} to="/register" variant="body2">
-            Don't have an account? Register
-          </Link>
-        </Box>
+          <Typography variant="body2" align="center">
+            Don&apos;t have an account?{' '}
+            <MuiLink component={Link} to="/register" underline="hover">
+              Register
+            </MuiLink>
+          </Typography>
+        </Paper>
       </Box>
-    </AuthLayout>
-  );
+    </Container>
+  )
 }

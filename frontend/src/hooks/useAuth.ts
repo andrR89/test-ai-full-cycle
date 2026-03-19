@@ -1,52 +1,52 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { login as apiLogin, register as apiRegister } from '../api/authApi';
-import type { LoginCredentials, RegisterCredentials } from '../types/auth';
+import { useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { login as apiLogin, register as apiRegister, getApiErrorMessage } from '../api/authApi'
+import type { LoginRequest, RegisterRequest } from '../types/auth'
 
 export function useLogin() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate()
 
-  async function handleLogin(credentials: LoginCredentials) {
-    setLoading(true);
-    setError(null);
+  const submit = useCallback(async (data: LoginRequest) => {
+    setLoading(true)
+    setError(null)
     try {
-      const { token } = await apiLogin(credentials);
-      localStorage.setItem('token', token);
-      navigate('/dashboard', { replace: true });
+      const response = await apiLogin(data)
+      localStorage.setItem('token', response.token)
+      navigate('/dashboard', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(getApiErrorMessage(err))
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }
+  }, [navigate])
 
-  return { handleLogin, loading, error };
+  return { submit, loading, error }
 }
 
 export function useRegister() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate()
 
-  async function handleRegister(credentials: Omit<RegisterCredentials, 'confirmPassword'>) {
-    setLoading(true);
-    setError(null);
+  const submit = useCallback(async (data: Omit<RegisterRequest, 'confirmPassword'>) => {
+    setLoading(true)
+    setError(null)
     try {
-      const { token } = await apiRegister(credentials);
-      localStorage.setItem('token', token);
-      navigate('/dashboard', { replace: true });
+      const response = await apiRegister(data)
+      localStorage.setItem('token', response.token)
+      navigate('/dashboard', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(getApiErrorMessage(err))
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }
+  }, [navigate])
 
-  return { handleRegister, loading, error };
+  return { submit, loading, error }
 }
 
 export function isAuthenticated(): boolean {
-  return Boolean(localStorage.getItem('token'));
+  return !!localStorage.getItem('token')
 }
