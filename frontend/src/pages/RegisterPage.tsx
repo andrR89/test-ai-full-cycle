@@ -1,140 +1,134 @@
-import React, { useState } from 'react';
+import { useState, type FormEvent } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import {
-  Box,
-  Button,
-  Container,
   TextField,
-  Typography,
+  Button,
   Alert,
-  CircularProgress,
-  Link as MuiLink,
-  Paper,
+  Box,
+  Link,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
-import { registerApi } from '../api/auth';
-import { useAuth } from '../hooks/useAuth';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import AuthLayout from '../components/AuthLayout';
+import { useRegister } from '../hooks/useAuth';
 
 export default function RegisterPage() {
-  const navigate = useNavigate();
-  const { setToken } = useAuth();
-
+  const { handleRegister, loading, error } = useRegister();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  const validate = (): string | null => {
-    if (!email) return 'Email is required.';
-    if (!password) return 'Password is required.';
-    if (password.length < 8) return 'Password must be at least 8 characters.';
-    if (password !== confirmPassword) return 'Passwords do not match.';
-    return null;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
+    setValidationError(null);
+
+    if (password.length < 8) {
+      setValidationError('Password must be at least 8 characters.');
       return;
     }
-    setError(null);
-    setLoading(true);
-    try {
-      const { token } = await registerApi({ email, password });
-      setToken(token);
-      navigate('/dashboard');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Registration failed';
-      setError(msg);
-    } finally {
-      setLoading(false);
+    if (password !== confirmPassword) {
+      setValidationError('Passwords do not match.');
+      return;
     }
-  };
 
-  const passwordMismatch = confirmPassword !== '' && password !== confirmPassword;
+    await handleRegister({ email, password });
+  }
+
+  const displayError = validationError ?? error;
 
   return (
-    <Container maxWidth="xs">
-      <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
-          <Typography component="h1" variant="h5" align="center" gutterBottom>
-            Create Account
-          </Typography>
+    <AuthLayout title="Create Account">
+      <Box
+        component="form"
+        onSubmit={onSubmit}
+        noValidate
+        aria-label="Register form"
+        sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        {displayError && (
+          <Alert severity="error" role="alert">
+            {displayError}
+          </Alert>
+        )}
 
-          {error && (
-            <Alert severity="error" role="alert" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
+        <TextField
+          id="reg-email"
+          label="Email Address"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          fullWidth
+          autoComplete="email"
+          autoFocus
+          inputProps={{ 'aria-required': true }}
+        />
 
-          <Box
-            component="form"
-            onSubmit={handleSubmit}
-            noValidate
-            aria-label="Registration form"
-          >
-            <TextField
-              id="email"
-              label="Email Address"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              fullWidth
-              margin="normal"
-              autoComplete="email"
-              autoFocus
-              inputProps={{ 'aria-label': 'Email address' }}
-            />
-            <TextField
-              id="password"
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              fullWidth
-              margin="normal"
-              autoComplete="new-password"
-              helperText="Minimum 8 characters"
-              inputProps={{ 'aria-label': 'Password' }}
-            />
-            <TextField
-              id="confirmPassword"
-              label="Confirm Password"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              fullWidth
-              margin="normal"
-              autoComplete="new-password"
-              error={passwordMismatch}
-              helperText={passwordMismatch ? 'Passwords do not match' : ''}
-              inputProps={{ 'aria-label': 'Confirm password' }}
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              disabled={loading}
-              sx={{ mt: 3, mb: 2 }}
-              aria-label={loading ? 'Creating account…' : 'Create account'}
-            >
-              {loading ? <CircularProgress size={24} color="inherit" /> : 'Create Account'}
-            </Button>
-          </Box>
+        <TextField
+          id="reg-password"
+          label="Password"
+          type={showPassword ? 'text' : 'password'}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          fullWidth
+          autoComplete="new-password"
+          helperText="Minimum 8 characters"
+          inputProps={{ 'aria-required': true, minLength: 8 }}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword((s) => !s)}
+                  edge="end"
+                >
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+        />
 
-          <Typography variant="body2" align="center">
-            Already have an account?{' '}
-            <MuiLink component={Link} to="/login" underline="hover">
-              Sign In
-            </MuiLink>
-          </Typography>
-        </Paper>
+        <TextField
+          id="reg-confirm-password"
+          label="Confirm Password"
+          type={showPassword ? 'text' : 'password'}
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+          fullWidth
+          autoComplete="new-password"
+          inputProps={{ 'aria-required': true }}
+          error={confirmPassword.length > 0 && password !== confirmPassword}
+          helperText={
+            confirmPassword.length > 0 && password !== confirmPassword
+              ? 'Passwords do not match'
+              : ''
+          }
+        />
+
+        <Button
+          type="submit"
+          variant="contained"
+          fullWidth
+          disabled={loading}
+          aria-busy={loading}
+          sx={{ mt: 1 }}
+        >
+          {loading ? 'Creating account…' : 'Create Account'}
+        </Button>
+
+        <Box sx={{ textAlign: 'center', mt: 1 }}>
+          <Link component={RouterLink} to="/login" variant="body2">
+            Already have an account? Sign In
+          </Link>
+        </Box>
       </Box>
-    </Container>
+    </AuthLayout>
   );
 }
