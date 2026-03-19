@@ -5,10 +5,10 @@ const app = express();
 
 app.use(express.json());
 
-// Health check
+// Mount routes
 app.use('/', healthRouter);
 
-// 404 handler
+// 404 fallback
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
