@@ -1,23 +1,23 @@
-export interface LoginRequest {
+export interface LoginCredentials {
   email: string;
   password: string;
 }
 
-export interface RegisterRequest {
+export interface RegisterCredentials {
   email: string;
   password: string;
   confirmPassword: string;
 }
 
-export interface AuthResponse {
-  token: string;
-  user: User;
-}
-
-export interface User {
+export interface AuthUser {
   id: string;
   email: string;
   createdAt: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: AuthUser;
 }
 
 export interface ApiError {
