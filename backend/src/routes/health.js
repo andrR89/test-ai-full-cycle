@@ -7,7 +7,7 @@ const START_TIME = Date.now();
  * GET /healthz
  * Returns application health status, uptime in seconds, and version.
  */
-router.get('/healthz', (req, res) => {
+router.get('/', (req, res) => {
   const uptimeSeconds = Math.floor((Date.now() - START_TIME) / 1000);
   const version = process.env.APP_VERSION || 'unknown';
 
