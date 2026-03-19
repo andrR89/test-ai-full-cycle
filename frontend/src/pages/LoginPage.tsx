@@ -1,109 +1,100 @@
-import React, { useState } from 'react';
+import { useState, type FormEvent } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import {
-  Box,
-  Button,
-  Container,
   TextField,
-  Typography,
+  Button,
   Alert,
-  CircularProgress,
-  Link as MuiLink,
-  Paper,
+  Box,
+  Link,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
-import { loginApi } from '../api/auth';
-import { useAuth } from '../hooks/useAuth';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import AuthLayout from '../components/AuthLayout';
+import { useLogin } from '../hooks/useAuth';
 
 export default function LoginPage() {
-  const navigate = useNavigate();
-  const { setToken } = useAuth();
-
+  const { handleLogin, loading, error } = useLogin();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      const { token } = await loginApi({ email, password });
-      setToken(token);
-      navigate('/dashboard');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Login failed';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
+    await handleLogin({ email, password });
+  }
 
   return (
-    <Container maxWidth="xs">
-      <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
-          <Typography component="h1" variant="h5" align="center" gutterBottom>
-            Sign In
-          </Typography>
+    <AuthLayout title="Sign In">
+      <Box
+        component="form"
+        onSubmit={onSubmit}
+        noValidate
+        aria-label="Login form"
+        sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
+        {error && (
+          <Alert severity="error" role="alert">
+            {error}
+          </Alert>
+        )}
 
-          {error && (
-            <Alert severity="error" role="alert" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
+        <TextField
+          id="email"
+          label="Email Address"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          fullWidth
+          autoComplete="email"
+          autoFocus
+          inputProps={{ 'aria-required': true }}
+        />
 
-          <Box
-            component="form"
-            onSubmit={handleSubmit}
-            noValidate
-            aria-label="Login form"
-          >
-            <TextField
-              id="email"
-              label="Email Address"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              fullWidth
-              margin="normal"
-              autoComplete="email"
-              autoFocus
-              inputProps={{ 'aria-label': 'Email address' }}
-            />
-            <TextField
-              id="password"
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              fullWidth
-              margin="normal"
-              autoComplete="current-password"
-              inputProps={{ 'aria-label': 'Password' }}
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              disabled={loading}
-              sx={{ mt: 3, mb: 2 }}
-              aria-label={loading ? 'Signing in…' : 'Sign in'}
-            >
-              {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
-            </Button>
-          </Box>
+        <TextField
+          id="password"
+          label="Password"
+          type={showPassword ? 'text' : 'password'}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          fullWidth
+          autoComplete="current-password"
+          inputProps={{ 'aria-required': true }}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword((s) => !s)}
+                  edge="end"
+                >
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+        />
 
-          <Typography variant="body2" align="center">
-            Don&apos;t have an account?{' '}
-            <MuiLink component={Link} to="/register" underline="hover">
-              Register
-            </MuiLink>
-          </Typography>
-        </Paper>
+        <Button
+          type="submit"
+          variant="contained"
+          fullWidth
+          disabled={loading}
+          aria-busy={loading}
+          sx={{ mt: 1 }}
+        >
+          {loading ? 'Signing in…' : 'Sign In'}
+        </Button>
+
+        <Box sx={{ textAlign: 'center', mt: 1 }}>
+          <Link component={RouterLink} to="/register" variant="body2">
+            Don't have an account? Register
+          </Link>
+        </Box>
       </Box>
-    </Container>
+    </AuthLayout>
   );
 }
