@@ -1,0 +1,27 @@
+name: Trigger AI Pipeline
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    if: github.event.label.name == 'ai-solve'
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PIPELINE_PAT }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: 'andrR89',
+              repo: 'full-cycle-ai',
+              event_type: 'solve-issue',
+              client_payload: {
+                repo_name: context.repo.owner + '/' + context.repo.repo,
+                issue_number: context.payload.issue.number,
+                issue_title: context.payload.issue.title,
+                issue_body: context.payload.issue.body,
+                issue_url: context.payload.issue.html_url
+              }
+            });
