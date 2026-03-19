@@ -1,13 +1,12 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "Node.js/Express backend API",
+  "description": "Express API backend",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest --runInBand --forceExit",
-    "test:coverage": "jest --runInBand --forceExit --coverage"
+    "test": "jest --runInBand --forceExit"
   },
   "dependencies": {
     "express": "^4.18.2"
