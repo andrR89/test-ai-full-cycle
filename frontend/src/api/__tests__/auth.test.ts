@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 import { loginUser, registerUser, getErrorMessage } from '../auth'
 
 vi.mock('axios', async (importOriginal) => {
   const actual = await importOriginal<typeof import('axios')>()
   return {
+    ...actual,
     default: {
       ...actual.default,
       create: vi.fn(() => ({
@@ -23,7 +24,6 @@ beforeEach(() => {
 
 describe('getErrorMessage', () => {
   it('returns message from AxiosError response', () => {
-    const { AxiosError } = require('axios')
     const err = new AxiosError('Request failed')
     err.response = { data: { message: 'Invalid credentials' } }
     expect(getErrorMessage(err)).toBe('Invalid credentials')

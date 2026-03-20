@@ -1,11 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import axios from 'axios'
 
-vi.mock('axios', () => {
-  const mockAxios: any = {
-    create: vi.fn(),
+vi.mock('axios', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('axios')>()
+  return {
+    ...actual,
+    default: {
+      ...actual.default,
+      create: vi.fn(() => ({
+        interceptors: {
+          request: { use: vi.fn() },
+          response: { use: vi.fn() },
+        },
+        post: vi.fn(),
+        get: vi.fn(),
+      })),
+    },
   }
-  return { default: mockAxios }
 })
 
 describe('getApiErrorMessage', () => {

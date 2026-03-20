@@ -29,7 +29,12 @@ export async function getMeApi(): Promise<User> {
 
 export function getApiErrorMessage(error: unknown, fallback = 'An unexpected error occurred'): string {
   if (error instanceof AxiosError) {
-    return error.response?.data?.message ?? fallback
+    return error.response?.data?.message ?? error.message ?? fallback
   }
   return fallback
 }
+
+// Aliases used by tests
+export const login = loginApi
+export const register = registerApi
+export const getMe = getMeApi
